@@ -21,7 +21,16 @@ module ActFluentLoggerRails
       return true if severity < @level
       message = (block_given? ? block.call : progname) if message.blank?
       return true if message.blank?
-      @logger.add_message(severity, message)
+      tags = {}
+      Rails.configuration.log_tags.each_with_index do |tag_key, index|
+        case tag_key
+        when Proc
+          tags["proc_#{index}"] = current_tags[index]
+        when Symbol
+          tags[tag_key.to_s] = current_tags[index]
+        end
+      end
+      @logger.add_message(severity, message, tags)
       true
     end
 
@@ -47,9 +56,10 @@ module ActFluentLoggerRails
       @messages = []
     end
 
-    def add_message(severity, message)
+    def add_message(severity, message, tags)
       @severity = severity if @severity < severity
       @messages << message
+      @tags = tags || {}
     end
 
     def flush
@@ -59,9 +69,10 @@ module ActFluentLoggerRails
                  else
                    @messages
                  end
-      @fluent_logger.post(@tag, messages: messages, level: format_severity(@severity))
+      @fluent_logger.post(@tag, @tags.update(messages: messages, level: format_severity(@severity)))
       @severity = 0
       @messages.clear
+      @tags = {}
     end
 
     def close
