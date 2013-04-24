@@ -22,7 +22,8 @@ module ActFluentLoggerRails
       message = (block_given? ? block.call : progname) if message.blank?
       return true if message.blank?
       tags = {}
-      Rails.configuration.log_tags.each_with_index do |tag_key, index|
+      log_tags = Rails.configuration.log_tags || []
+      log_tags.each_with_index do |tag_key, index|
         case tag_key
         when Proc
           tags["proc_#{index}"] = current_tags[index]
